@@ -1,16 +1,116 @@
-# React + Vite
+# F1 Dashboard
 
-This template provides a minimal setup to get React working in Vite with HMR and some ESLint rules.
+An interactive Formula 1 dashboard built with React, Vite, and Tailwind CSS. It combines current championship standings, constructor performance, race-calendar data, circuit maps, and driver telemetry in one responsive interface.
 
-Currently, two official plugins are available:
+## Live Project
 
-- [@vitejs/plugin-react](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react) uses [Oxc](https://oxc.rs)
-- [@vitejs/plugin-react-swc](https://github.com/vitejs/vite-plugin-react/blob/main/packages/plugin-react-swc) uses [SWC](https://swc.rs/)
+- GitHub repository: https://github.com/SumadhGurung/f1-dashboard
 
-## React Compiler
+## Features
 
-The React Compiler is not enabled on this template because of its impact on dev & build performances. To add it, see [this documentation](https://react.dev/learn/react-compiler/installation).
+- Live driver standings with championship points, wins, nationality, and team information.
+- Constructor championship standings with team points, wins, drivers, engine, and base location.
+- Driver and team search with team filters.
+- Automatic standings refresh every 30 seconds.
+- Animated driver telemetry values that update during the session.
+- Formula 1 race calendar with completed, current, and upcoming race statuses.
+- Interactive world circuit map with race markers and route visualization.
+- Circuit detail panels with OpenStreetMap location embeds and track layouts.
+- Driver and constructor detail views with optional external images.
+- Loading, retry, fallback-image, and API-error states.
+- Responsive layout for desktop and mobile screens.
 
-## Expanding the ESLint configuration
+## Technology Stack
 
-If you are developing a production application, we recommend using TypeScript with type-aware lint rules enabled. Check out the [TS template](https://github.com/vitejs/vite/tree/main/packages/create-vite/template-react-ts) for information on how to integrate TypeScript and [`typescript-eslint`](https://typescript-eslint.io) in your project.
+- React 19
+- JavaScript (ES modules)
+- Vite
+- Tailwind CSS 4 with `@tailwindcss/vite`
+- Jolpica F1 API for standings and race-calendar data
+- Wikipedia REST API for optional driver and constructor thumbnails
+- OpenStreetMap for circuit location maps
+- ESLint for code-quality checks
+
+## Getting Started
+
+### Prerequisites
+
+- Node.js 20 or newer recommended
+- npm
+
+### Installation
+
+```bash
+npm install
+```
+
+### Start the development server
+
+```bash
+npm run dev
+```
+
+Open the local URL shown by Vite in your browser.
+
+## Available Scripts
+
+| Command | Description |
+|---|---|
+| `npm run dev` | Start the Vite development server with hot reload. |
+| `npm run build` | Create an optimized production build in `dist/`. |
+| `npm run preview` | Preview the production build locally. |
+| `npm run lint` | Run ESLint across the project. |
+
+## Project Structure
+
+```text
+f1_dashboard/
+├── public/              # Public browser assets
+├── src/
+│   ├── assets/          # F1 logo and local image assets
+│   ├── App.jsx          # Dashboard UI, data loading, and interactions
+│   ├── index.css        # Tailwind entry point and global base styles
+│   └── main.jsx         # React application entry point
+├── index.html
+├── package.json
+├── vite.config.js       # Vite and Tailwind configuration
+└── REPORT.md            # Student project documentation report
+```
+
+## Data Sources
+
+The dashboard requests data from public services at runtime:
+
+- Jolpica F1 API: driver standings, constructor standings, and the current race calendar.
+- Wikipedia REST API: optional driver and constructor thumbnails.
+- OpenStreetMap: embedded circuit location maps.
+- Wikimedia Commons: circuit track-map images.
+
+The application does not require local environment variables for its current configuration. Because the data is loaded from external services, the dashboard may show its retry or error state when an API is unavailable or blocks a request.
+
+## React Concepts Demonstrated
+
+- Reusable React components and props.
+- State management with `useState`.
+- Data loading, intervals, animation, and event cleanup with `useEffect`.
+- Derived data with `useMemo`.
+- Stable data-loading callbacks with `useCallback`.
+- Conditional rendering for loading, errors, selections, and fallbacks.
+- List rendering with `map()`.
+- Event handling for search, filters, tabs, selections, and keyboard input.
+
+## Deployment
+
+The project can be deployed to Vercel or another static hosting provider using these settings:
+
+- Build command: `npm run build`
+- Output directory: `dist`
+- Install command: `npm install`
+
+## Project Report
+
+The formatted student documentation is available in [REPORT.md](REPORT.md). Add the student name, roll number, GitHub profile, and application screenshots before submission.
+
+## License and Attribution
+
+This is an educational Formula 1 dashboard project. It is not affiliated with or endorsed by Formula 1, the FIA, or any participating team. Data and map content are provided by the external services listed above and remain subject to their respective terms.
