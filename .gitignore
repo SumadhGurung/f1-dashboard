@@ -24,3 +24,6 @@ dist-ssr
 *.sw?
 
 .vercel
+
+# Keep the student report local; it is not part of the GitHub repository.
+REPORT.md
