@@ -452,7 +452,7 @@ function App() {
 
   if (loading) {
     return (
-      <div className="f1-app f1-app--centered">
+      <div className="f1-app f1-app--centered min-h-screen bg-[#0a0a0c] text-[#e8e8e8] flex items-center justify-center font-body text-xl tracking-[0.1em]">
         <style>{`
           .f1-app--centered {
             min-height: 100vh;
@@ -473,7 +473,7 @@ function App() {
 
   if (error && !drivers.length) {
     return (
-      <div className="f1-app f1-app--centered">
+      <div className="f1-app f1-app--centered min-h-screen bg-[#0a0a0c] text-[#ff4d4d] flex flex-col items-center justify-center gap-4 p-8 font-body">
         <style>{`
           .f1-app--centered {
             min-height: 100vh;
@@ -498,13 +498,13 @@ function App() {
           }
         `}</style>
         <p>Error: {error}</p>
-        <button className="f1-app__retry" onClick={loadStandings}>Retry</button>
+        <button className="f1-app__retry bg-[#e10600] border-0 text-white px-6 py-3 rounded cursor-pointer text-base" onClick={loadStandings}>Retry</button>
       </div>
     );
   }
 
   return (
-    <div className="f1-app">
+    <div className="f1-app min-h-screen bg-[#0a0a0c] text-[#e8e8e8] font-body p-8 max-[640px]:p-4">
       <style>{`
         @import url('https://fonts.googleapis.com/css2?family=Orbitron:wght@400;600;700;900&family=Rajdhani:wght@400;500;600;700&display=swap');
 
@@ -1210,43 +1210,43 @@ function App() {
         </div>
       )}
 
-      <header className="header">
-        <div className="header__brand">
-          <img src={f1Logo} alt="Formula 1" className="header__logo" />
+      <header className="header flex items-center justify-between flex-wrap gap-6 mb-8 pb-6 border-b-2 border-[rgba(225,6,0,0.4)]">
+        <div className="header__brand flex items-center gap-4">
+          <img src={f1Logo} alt="Formula 1" className="header__logo h-11 w-auto object-contain" />
           <div>
-            <h1 className="header__title">
+            <h1 className="header__title font-display text-[1.6rem] font-bold uppercase tracking-[0.05em]">
               Grand Prix <span>Dashboard</span>
             </h1>
-            <p className="header__subtitle">
+            <p className="header__subtitle text-[0.95rem] text-[#888] uppercase tracking-[0.15em]">
               Constructor Tracker · {season} Season · Round {round}
             </p>
-            <p className="header__updated">
+            <p className="header__updated mt-1 text-[0.8rem] text-[#555] tracking-[0.08em]">
               Last updated: {lastUpdated ? lastUpdated.toLocaleTimeString() : '—'}
             </p>
           </div>
         </div>
-        <div className="live-badge">
-          <span className={`live-badge__dot ${pulse ? 'live-badge__dot--pulse' : ''}`} />
+        <div className="live-badge flex items-center gap-2 bg-[rgba(225,6,0,0.15)] border border-[rgba(225,6,0,0.5)] px-4 py-2 rounded font-display text-xs uppercase tracking-[0.2em]">
+          <span className={`live-badge__dot w-2 h-2 bg-[#e10600] rounded-full shadow-[0_0_8px_#e10600] transition-opacity duration-500 ${pulse ? 'opacity-30' : ''}`} />
           Live Data · {REFRESH_INTERVAL_MS / 1000}s refresh
         </div>
       </header>
 
-      <div className="stats-row">
-        <div className="stat-card">
-          <div className="stat-card__label">Championship Leader</div>
-          <div className="stat-card__value">{stats.leader.name.split(' ').pop()}</div>
+      <div className="stats-row grid grid-cols-[repeat(auto-fit,minmax(180px,1fr))] gap-4 mb-8">
+        <div className="stat-card bg-gradient-to-br from-[#141418] to-[#1a1a20] border border-[rgba(255,255,255,0.06)] border-l-[3px] border-l-[#e10600] p-5 rounded-md">
+          <div className="stat-card__label text-xs text-[#666] uppercase tracking-[0.15em] mb-2">Championship Leader</div>
+          <div className="stat-card__value font-display text-3xl font-bold text-white">{stats.leader.name.split(' ').pop()}</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Leader Points</div>
-          <div key={stats.leader.points} className="stat-card__value stat-card__value--accent value--live">{stats.leader.points}</div>
+        <div className="stat-card bg-gradient-to-br from-[#141418] to-[#1a1a20] border border-[rgba(255,255,255,0.06)] border-l-[3px] border-l-[#e10600] p-5 rounded-md">
+          <div className="stat-card__label text-xs text-[#666] uppercase tracking-[0.15em] mb-2">Leader Points</div>
+          <div key={stats.leader.points} className="stat-card__value stat-card__value--accent value--live font-display text-3xl font-bold text-[#00ffc8]">{stats.leader.points}</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Total Wins</div>
-          <div className="stat-card__value">{stats.totalWins}</div>
+        <div className="stat-card bg-gradient-to-br from-[#141418] to-[#1a1a20] border border-[rgba(255,255,255,0.06)] border-l-[3px] border-l-[#e10600] p-5 rounded-md">
+          <div className="stat-card__label text-xs text-[#666] uppercase tracking-[0.15em] mb-2">Total Wins</div>
+          <div className="stat-card__value font-display text-3xl font-bold text-white">{stats.totalWins}</div>
         </div>
-        <div className="stat-card">
-          <div className="stat-card__label">Drivers Tracked</div>
-          <div className="stat-card__value">{drivers.length}</div>
+        <div className="stat-card bg-gradient-to-br from-[#141418] to-[#1a1a20] border border-[rgba(255,255,255,0.06)] border-l-[3px] border-l-[#e10600] p-5 rounded-md">
+          <div className="stat-card__label text-xs text-[#666] uppercase tracking-[0.15em] mb-2">Drivers Tracked</div>
+          <div className="stat-card__value font-display text-3xl font-bold text-white">{drivers.length}</div>
         </div>
       </div>
 

@@ -9,7 +9,7 @@
 | GitHub Profile | **[Enter your GitHub profile URL]** |
 | GitHub Repository | **[Enter your repository URL]** |
 | Project Title | **F1 Dashboard** |
-| Technology Used | React, JavaScript, CSS3, Vite, REST APIs |
+| Technology Used | React, JavaScript, Tailwind CSS, Vite, REST APIs |
 
 ## 1. Project Title
 
@@ -31,14 +31,14 @@ The project was developed as a single-page React application using reusable UI c
 
 - **React** - For building the component-based user interface.
 - **JavaScript** - For application logic, data transformation, filtering, and interaction handling.
-- **CSS3** - For the responsive dashboard layout, typography, colors, animations, and visual styling.
+- **Tailwind CSS** - For the responsive dashboard layout, spacing, typography, colors, and component styling.
 - **Vite** - For development, module bundling, and production builds.
 - **Jolpica F1 API** - For current driver standings, constructor standings, and race-calendar data.
 - **Wikipedia REST API** - For optional driver and constructor image thumbnails.
 - **OpenStreetMap** - For embedded circuit location maps.
 - **Git and GitHub** - For version control and project submission.
 
-> Note: The current implementation uses CSS3 stylesheets and CSS-in-JSX. It does not currently use Tailwind CSS utility classes.
+> Tailwind CSS is integrated through the official Vite plugin and is used for the dashboard shell, header, live indicator, and summary-card utilities. A small set of existing component rules remains in `App.jsx` for specialized table and SVG-map styling.
 
 ### 3.2 Development Process
 
@@ -125,12 +125,12 @@ Developing the F1 Dashboard provided practical experience with React component d
 
 The main challenge was coordinating multiple asynchronous data sources while keeping the interface responsive and understandable. This was handled by separating data-loading functions, adding loading and error states, using fallback content for unavailable images, and preserving selected items when refreshed data arrives. Another challenge was presenting a large amount of information without making the dashboard difficult to scan, which was addressed through summary cards, tabs, filters, detail panels, responsive layouts, and clear visual hierarchy.
 
-The project currently uses CSS3 rather than Tailwind CSS for styling. If Tailwind CSS is required by the submission rules, the styling layer should be migrated before final submission and the technology list should then be updated accordingly.
+The project uses Tailwind CSS for its primary layout and dashboard styling, with a small set of component-specific rules retained for the data tables and SVG circuit map. This combination keeps the interface responsive while allowing the map visualization to preserve its specialized SVG presentation.
 
 ## 8. Submission Requirements Checklist
 
 - [ ] Project is developed using React.
-- [ ] Styling technology is accurately documented as CSS3, or migrated to Tailwind CSS if required.
+- [x] Tailwind CSS is installed and used for the dashboard styling.
 - [ ] Project is uploaded to GitHub.
 - [ ] GitHub profile link is provided.
 - [ ] GitHub repository link is provided.
