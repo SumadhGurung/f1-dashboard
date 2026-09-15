@@ -26,6 +26,7 @@ An interactive Formula 1 dashboard built with React, Vite, and Tailwind CSS. It 
 - JavaScript (ES modules)
 - Vite
 - Tailwind CSS 4 with `@tailwindcss/vite`
+- Leaflet and React Leaflet for the interactive world map
 - Jolpica F1 API for standings and race-calendar data
 - Wikipedia REST API for optional driver and constructor thumbnails
 - OpenStreetMap for circuit location maps
@@ -82,8 +83,8 @@ f1_dashboard/
 The dashboard requests data from public services at runtime:
 
 - Jolpica F1 API: driver standings, constructor standings, and the current race calendar.
-- Wikipedia REST API: optional driver and constructor thumbnails.
-- OpenStreetMap: embedded circuit location maps.
+- Wikipedia REST API: driver portraits and constructor/team images when available.
+- OpenStreetMap: world-map tiles and embedded circuit location maps.
 - Wikimedia Commons: circuit track-map images.
 
 The application does not require local environment variables for its current configuration. Because the data is loaded from external services, the dashboard may show its retry or error state when an API is unavailable or blocks a request.

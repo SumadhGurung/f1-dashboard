@@ -1,4 +1,6 @@
 import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
+import { CircleMarker, MapContainer, Polyline, TileLayer, Tooltip } from 'react-leaflet';
+import 'leaflet/dist/leaflet.css';
 import f1Logo from './assets/f1-logo.svg';
 
 const DRIVER_STANDINGS_URL = 'https://api.jolpi.ca/ergast/f1/current/driverstandings.json';
@@ -6,8 +8,6 @@ const CONSTRUCTOR_STANDINGS_URL = 'https://api.jolpi.ca/ergast/f1/current/constr
 const RACE_CALENDAR_URL = 'https://api.jolpi.ca/ergast/f1/current.json';
 const REFRESH_INTERVAL_MS = 30000;
 const TELEMETRY_TICK_MS = 3000;
-const MAP_WIDTH = 960;
-const MAP_HEIGHT = 480;
 
 const CIRCUIT_TRACK_MAPS = {
   albert_park: 'https://upload.wikimedia.org/wikipedia/commons/thumb/8/84/Albert_Park_Circuit_2021.svg/640px-Albert_Park_Circuit_2021.svg.png',
@@ -74,6 +74,87 @@ function getTeamColor(team) {
   return TEAM_META[team]?.color ?? '#888888';
 }
 
+const wikiPhotoCache = new Map();
+
+async function getWikiThumbnail(wikiUrl) {
+  if (!wikiUrl) return null;
+  if (wikiPhotoCache.has(wikiUrl)) return wikiPhotoCache.get(wikiUrl);
+
+  try {
+    const title = decodeURIComponent(wikiUrl.split('/wiki/')[1]);
+    const response = await fetch(
+      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
+    );
+    if (!response.ok) throw new Error('Thumbnail unavailable');
+    const data = await response.json();
+    const thumbnail = data.thumbnail?.source ?? null;
+    wikiPhotoCache.set(wikiUrl, thumbnail);
+    return thumbnail;
+  } catch {
+    wikiPhotoCache.set(wikiUrl, null);
+    return null;
+  }
+}
+
+function getInitials(name) {
+  return name
+    .split(' ')
+    .map((part) => part[0])
+    .join('')
+    .slice(0, 2)
+    .toUpperCase();
+}
+
+function DriverAvatar({ driver }) {
+  const [failed, setFailed] = useState(false);
+
+  if (driver.photo && !failed) {
+    return (
+      <img
+        src={driver.photo}
+        alt={`${driver.name} portrait`}
+        className="h-10 w-10 rounded-full object-cover border border-white/20 bg-[#20232b]"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="flex h-10 w-10 shrink-0 items-center justify-center rounded-full border border-white/20 text-xs font-bold text-white"
+      style={{ backgroundColor: getTeamColor(driver.team) }}
+      aria-hidden="true"
+    >
+      {getInitials(driver.name)}
+    </span>
+  );
+}
+
+function TeamLogo({ team }) {
+  const [failed, setFailed] = useState(false);
+
+  if (team.logo && !failed) {
+    return (
+      <img
+        src={team.logo}
+        alt={`${team.name} logo`}
+        className="h-9 w-9 rounded-md object-contain border border-white/10 bg-white/5 p-1"
+        onError={() => setFailed(true)}
+      />
+    );
+  }
+
+  return (
+    <span
+      className="flex h-9 w-9 shrink-0 items-center justify-center rounded-md border border-white/15 text-xs font-bold text-white"
+      style={{ backgroundColor: getTeamColor(team.name) }}
+      aria-hidden="true"
+    >
+      {team.name.slice(0, 2).toUpperCase()}
+    </span>
+  );
+}
+
 function nationalityCode(nationality) {
   return NATIONALITY_CODES[nationality] ?? nationality.slice(0, 3).toUpperCase();
 }
@@ -89,6 +170,8 @@ function mapDriversFromApi(standings) {
       code: item.Driver.code,
       name: `${item.Driver.givenName} ${item.Driver.familyName}`,
       team,
+      wikiUrl: item.Driver.url,
+      photo: null,
       points: Number(item.points),
       wins,
       topSpeed: +(338 + (22 - position) * 0.75).toFixed(1),
@@ -109,6 +192,8 @@ function mapConstructorsFromApi(constructorStandings, drivers) {
     return {
       id: item.Constructor.constructorId,
       name,
+      wikiUrl: item.Constructor.url,
+      logo: null,
       drivers: teamDrivers,
       points: Number(item.points),
       wins: Number(item.wins),
@@ -139,9 +224,24 @@ async function fetchStandings() {
   const driversBase = mapDriversFromApi(driverList);
   const constructorsBase = mapConstructorsFromApi(constructorList, driversBase);
 
+  const [drivers, constructors] = await Promise.all([
+    Promise.all(
+      driversBase.map(async (driver) => ({
+        ...driver,
+        photo: await getWikiThumbnail(driver.wikiUrl),
+      }))
+    ),
+    Promise.all(
+      constructorsBase.map(async (constructor) => ({
+        ...constructor,
+        logo: await getWikiThumbnail(constructor.wikiUrl),
+      }))
+    ),
+  ]);
+
   return {
-    drivers: driversBase,
-    constructors: constructorsBase,
+    drivers,
+    constructors,
     season: driverData.MRData.StandingsTable.season,
     round: driverData.MRData.StandingsTable.round,
   };
@@ -155,13 +255,6 @@ function tickTelemetrySpeed(prevDrivers) {
       topSpeed: Math.min(355, Math.max(335, +(driver.topSpeed + speedDelta).toFixed(1))),
     };
   });
-}
-
-function projectLatLng(lat, lng, width = MAP_WIDTH, height = MAP_HEIGHT) {
-  return {
-    x: ((Number(lng) + 180) / 360) * width,
-    y: ((90 - Number(lat)) / 180) * height,
-  };
 }
 
 function mapRacesFromApi(races, currentRound) {
@@ -186,7 +279,6 @@ function mapRacesFromApi(races, currentRound) {
       date: race.date,
       time: race.time ?? '',
       status,
-      coords: projectLatLng(lat, lng),
       trackMap: CIRCUIT_TRACK_MAPS[race.Circuit.circuitId] ?? null,
       wikiUrl: race.Circuit.url,
     };
@@ -232,7 +324,6 @@ function App() {
   const [races, setRaces] = useState([]);
   const [calendarError, setCalendarError] = useState(null);
   const [selectedCircuit, setSelectedCircuit] = useState(null);
-  const [hoveredCircuit, setHoveredCircuit] = useState(null);
   const [pulse, setPulse] = useState(false);
   const refreshInFlight = useRef(false);
 
@@ -292,11 +383,6 @@ function App() {
   const sortedConstructors = useMemo(
     () => [...constructors].sort((a, b) => b.points - a.points),
     [constructors]
-  );
-
-  const mapRoutePoints = useMemo(
-    () => races.map((r) => `${r.coords.x},${r.coords.y}`).join(' '),
-    [races]
   );
 
   const stats = useMemo(() => {
@@ -925,6 +1011,41 @@ function App() {
           overflow: hidden;
         }
 
+        .leaflet-map {
+          width: 100%;
+          height: 430px;
+          background: #081019;
+          z-index: 0;
+        }
+
+        .leaflet-container {
+          font-family: 'Rajdhani', sans-serif;
+          background: #081019;
+        }
+
+        .leaflet-control-zoom a {
+          background: #111820;
+          color: #e8e8e8;
+          border-color: rgba(255, 255, 255, 0.15);
+        }
+
+        .leaflet-control-zoom a:hover {
+          background: #e10600;
+          color: #fff;
+        }
+
+        .leaflet-tooltip {
+          background: rgba(8, 12, 18, 0.96);
+          border: 1px solid rgba(0, 255, 200, 0.7);
+          border-radius: 5px;
+          box-shadow: 0 8px 18px rgba(0, 0, 0, 0.35);
+          color: #e8e8e8;
+          font-family: 'Rajdhani', sans-serif;
+          font-size: 0.85rem;
+        }
+
+        .leaflet-tooltip strong { color: #00ffc8; }
+
         .world-map__ocean { fill: #081019; }
         .world-map__land {
           fill: #142535;
@@ -1331,7 +1452,10 @@ function App() {
                             {driver.position}
                           </td>
                           <td>
-                            <span className="driver-name">{driver.name}</span>
+                            <span className="flex items-center gap-3">
+                              <DriverAvatar driver={driver} />
+                              <span className="driver-name">{driver.name}</span>
+                            </span>
                           </td>
                           <td>
                             <span
@@ -1438,11 +1562,14 @@ function App() {
                   <tr key={team.id}>
                     <td className={`pos pos--p${index + 1 <= 3 ? index + 1 : ''}`}>{index + 1}</td>
                     <td>
-                      <span
-                        className="team-badge"
-                        style={{ '--team-color': getTeamColor(team.name) }}
-                      >
-                        {team.name}
+                      <span className="flex items-center gap-3">
+                        <TeamLogo team={team} />
+                        <span
+                          className="team-badge"
+                          style={{ '--team-color': getTeamColor(team.name) }}
+                        >
+                          {team.name}
+                        </span>
                       </span>
                     </td>
                     <td className="constructor-drivers">{team.drivers.join(', ')}</td>
@@ -1467,105 +1594,44 @@ function App() {
               </div>
             ) : (
               <>
-                <svg
-                  className="world-map"
-                  viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
-                  preserveAspectRatio="none"
-                  role="img"
-                  aria-label="F1 world circuit map"
+                <MapContainer
+                  className="leaflet-map"
+                  center={[25, 20]}
+                  zoom={2}
+                  minZoom={2}
+                  maxZoom={6}
+                  scrollWheelZoom
+                  aria-label="Interactive F1 world circuit map"
                 >
-                  <rect className="world-map__ocean" width={MAP_WIDTH} height={MAP_HEIGHT} />
-                  <g aria-hidden="true">
-                    <path className="world-map__land" d="M92 92 132 70 176 78 201 105 190 135 204 161 181 181 173 218 144 246 125 229 114 196 91 172 76 137Z" />
-                    <path className="world-map__land" d="M218 266 248 278 264 315 257 351 237 384 224 420 202 402 208 365 194 332 201 298Z" />
-                    <path className="world-map__land" d="M392 96 426 77 472 84 503 103 552 91 605 99 647 87 696 96 733 116 773 113 812 133 845 157 832 178 782 170 748 187 704 173 662 181 615 165 579 176 535 158 501 170 464 150 427 153 402 130Z" />
-                    <path className="world-map__land" d="M484 190 518 177 553 192 568 226 550 258 534 294 507 319 480 299 466 264 475 230Z" />
-                    <path className="world-map__land" d="M760 318 796 307 837 318 861 337 850 355 815 360 782 349Z" />
-                    <text className="world-map__region" x="145" y="55">AMERICAS</text>
-                    <text className="world-map__region" x="650" y="70">EUROPE / ASIA</text>
-                    <text className="world-map__region" x="518" y="350">AFRICA</text>
-                  </g>
-                  {[0, 1, 2, 3, 4].map((i) => (
-                    <line
-                      key={`lat-${i}`}
-                      className="world-map__grid"
-                      x1={0}
-                      y1={(MAP_HEIGHT / 4) * i}
-                      x2={MAP_WIDTH}
-                      y2={(MAP_HEIGHT / 4) * i}
-                    />
-                  ))}
-                  {[0, 1, 2, 3, 4, 5, 6, 7, 8].map((i) => (
-                    <line
-                      key={`lng-${i}`}
-                      className="world-map__grid"
-                      x1={(MAP_WIDTH / 8) * i}
-                      y1={0}
-                      x2={(MAP_WIDTH / 8) * i}
-                      y2={MAP_HEIGHT}
-                    />
-                  ))}
-                  {mapRoutePoints && (
-                    <polyline className="world-map__route" points={mapRoutePoints} />
-                  )}
+                  <TileLayer
+                    attribution='&copy; <a href="https://www.openstreetmap.org/copyright">OpenStreetMap</a> contributors'
+                    url="https://{s}.tile.openstreetmap.org/{z}/{x}/{y}.png"
+                  />
+                  <Polyline
+                    positions={races.map((race) => [race.lat, race.lng])}
+                    pathOptions={{ color: '#00ffc8', weight: 2, opacity: 0.7, dashArray: '3 8' }}
+                  />
                   {races.map((race) => {
                     const isSelected = selectedCircuit?.id === race.id;
-                    const isHovered = hoveredCircuit?.id === race.id;
-                    const markerClass = [
-                      'circuit-marker',
-                      `circuit-marker--${race.status}`,
-                      isSelected ? 'circuit-marker--selected' : '',
-                      isHovered ? 'circuit-marker--hovered' : '',
-                    ].join(' ');
+                    const isCurrent = race.status === 'current';
+                    const color = isSelected ? '#ffd700' : isCurrent ? '#e10600' : race.status === 'upcoming' ? '#00ffc8' : '#94a3b8';
                     return (
-                      <g
+                      <CircleMarker
                         key={race.id}
-                        className={markerClass}
-                        role="button"
-                        tabIndex={0}
-                        aria-label={`Select ${race.raceName}`}
-                        transform={`translate(${race.coords.x}, ${race.coords.y})`}
-                        onMouseEnter={() => setHoveredCircuit(race)}
-                        onMouseLeave={() => setHoveredCircuit(null)}
-                        onFocus={() => setHoveredCircuit(race)}
-                        onBlur={() => setHoveredCircuit(null)}
-                        onKeyDown={(event) => {
-                          if (event.key === 'Enter' || event.key === ' ') {
-                            event.preventDefault();
-                            handleCircuitClick(race);
-                          }
-                        }}
-                        onClick={() => handleCircuitClick(race)}
+                        center={[race.lat, race.lng]}
+                        radius={isSelected ? 10 : isCurrent ? 8 : 6}
+                        pathOptions={{ color, fillColor: color, fillOpacity: 0.95, weight: 2 }}
+                        eventHandlers={{ click: () => handleCircuitClick(race) }}
                       >
-                        <circle className="circuit-marker__hit-area" r={15} />
-                        {race.status === 'current' && <circle className="circuit-marker__pulse" r={7} />}
-                        <circle className="circuit-marker__dot" r={isSelected ? 7 : 5} />
-                        {(isSelected || race.status === 'current') && (
-                          <text className="circuit-marker__label" y={-10}>
-                            R{race.round}
-                          </text>
-                        )}
-                      </g>
+                        <Tooltip direction="top" offset={[0, -8]} opacity={1} sticky>
+                          <strong>Round {race.round}: {race.raceName}</strong>
+                          <br />
+                          {race.locality}, {race.country} · {race.status}
+                        </Tooltip>
+                      </CircleMarker>
                     );
                   })}
-                  {hoveredCircuit && (() => {
-                    const tooltipX = Math.min(Math.max(hoveredCircuit.coords.x, 135), MAP_WIDTH - 135);
-                    const tooltipY = Math.max(hoveredCircuit.coords.y - 62, 34);
-                    return (
-                      <g
-                        className="map-hover-card"
-                        transform={`translate(${tooltipX - 125}, ${tooltipY - 34})`}
-                      >
-                        <rect className="map-hover-card__surface" width="250" height="68" rx="6" />
-                        <text className="map-hover-card__round" x="14" y="18">ROUND {hoveredCircuit.round}</text>
-                        <text className="map-hover-card__name" x="14" y="37">{hoveredCircuit.raceName}</text>
-                        <text className="map-hover-card__meta" x="14" y="55">
-                          {hoveredCircuit.locality}, {hoveredCircuit.country} · {hoveredCircuit.status}
-                        </text>
-                      </g>
-                    );
-                  })()}
-                </svg>
+                </MapContainer>
                 <div className="map-legend">
                   <span className="map-legend__item">
                     <span className="map-legend__dot map-legend__dot--completed" /> Completed

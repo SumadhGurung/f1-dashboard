@@ -34,11 +34,12 @@ The project was developed as a single-page React application using reusable UI c
 - **Tailwind CSS** - For the responsive dashboard layout, spacing, typography, colors, and component styling.
 - **Vite** - For development, module bundling, and production builds.
 - **Jolpica F1 API** - For current driver standings, constructor standings, and race-calendar data.
-- **Wikipedia REST API** - For optional driver and constructor image thumbnails.
-- **OpenStreetMap** - For embedded circuit location maps.
+- **Leaflet and React Leaflet** - For the interactive world map, zoom controls, route line, and circuit markers.
+- **OpenStreetMap** - For world-map tiles and embedded circuit location maps.
+- **Wikipedia REST API** - For driver portraits and constructor/team images when available.
 - **Git and GitHub** - For version control and project submission.
 
-> Tailwind CSS is integrated through the official Vite plugin and is used for the dashboard shell, header, live indicator, and summary-card utilities. A small set of existing component rules remains in `App.jsx` for specialized table and SVG-map styling.
+> Tailwind CSS is integrated through the official Vite plugin and is used for the dashboard shell, header, live indicator, and summary-card utilities. Leaflet supplies the interactive world map while a small set of component rules remains in `App.jsx` for specialized table and circuit-detail styling.
 
 ### 3.2 Development Process
 
