@@ -1,5 +1,5 @@
 {
-  "name": "my-app",
+  "name": "f1-dashboard",
   "private": true,
   "version": "0.0.0",
   "type": "module",
@@ -10,11 +10,8 @@
     "preview": "vite preview"
   },
   "dependencies": {
-    "@supabase/supabase-js": "^2.114.0",
-    "leaflet": "^1.9.4",
     "react": "^19.2.8",
-    "react-dom": "^19.2.8",
-    "react-leaflet": "^5.0.0"
+    "react-dom": "^19.2.8"
   },
   "devDependencies": {
     "@eslint/js": "^10.0.1",

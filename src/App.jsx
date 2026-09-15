@@ -1,4 +1,4 @@
-import { useState, useEffect, useMemo, useCallback } from 'react';
+import { useState, useEffect, useMemo, useCallback, useRef } from 'react';
 import f1Logo from './assets/f1-logo.svg';
 
 const DRIVER_STANDINGS_URL = 'https://api.jolpi.ca/ergast/f1/current/driverstandings.json';
@@ -74,88 +74,6 @@ function getTeamColor(team) {
   return TEAM_META[team]?.color ?? '#888888';
 }
 
-const wikiPhotoCache = new Map();
-
-async function getWikiThumbnail(wikiUrl) {
-  if (!wikiUrl) return null;
-  if (wikiPhotoCache.has(wikiUrl)) return wikiPhotoCache.get(wikiUrl);
-
-  try {
-    const title = decodeURIComponent(wikiUrl.split('/wiki/')[1]);
-    const res = await fetch(
-      `https://en.wikipedia.org/api/rest_v1/page/summary/${encodeURIComponent(title)}`
-    );
-    if (!res.ok) {
-      wikiPhotoCache.set(wikiUrl, null);
-      return null;
-    }
-    const data = await res.json();
-    const url = data.thumbnail?.source ?? null;
-    wikiPhotoCache.set(wikiUrl, url);
-    return url;
-  } catch {
-    wikiPhotoCache.set(wikiUrl, null);
-    return null;
-  }
-}
-
-function getInitials(name) {
-  return name
-    .split(' ')
-    .map((part) => part[0])
-    .join('')
-    .slice(0, 2)
-    .toUpperCase();
-}
-
-function DriverAvatar({ driver, size = 'md' }) {
-  const [failed, setFailed] = useState(false);
-
-  if (driver.photo && !failed) {
-    return (
-      <img
-        src={driver.photo}
-        alt={driver.name}
-        className={`driver-avatar driver-avatar--${size}`}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={`driver-avatar driver-avatar--${size} driver-avatar--fallback`}
-      style={{ '--avatar-color': getTeamColor(driver.team) }}
-    >
-      {getInitials(driver.name)}
-    </div>
-  );
-}
-
-function TeamLogo({ team, size = 'md' }) {
-  const [failed, setFailed] = useState(false);
-
-  if (team.logo && !failed) {
-    return (
-      <img
-        src={team.logo}
-        alt={team.name}
-        className={`team-logo team-logo--${size}`}
-        onError={() => setFailed(true)}
-      />
-    );
-  }
-
-  return (
-    <div
-      className={`team-logo team-logo--${size} team-logo--fallback`}
-      style={{ '--team-color': getTeamColor(team.name) }}
-    >
-      {team.name.slice(0, 2).toUpperCase()}
-    </div>
-  );
-}
-
 function nationalityCode(nationality) {
   return NATIONALITY_CODES[nationality] ?? nationality.slice(0, 3).toUpperCase();
 }
@@ -171,8 +89,6 @@ function mapDriversFromApi(standings) {
       code: item.Driver.code,
       name: `${item.Driver.givenName} ${item.Driver.familyName}`,
       team,
-      wikiUrl: item.Driver.url,
-      photo: null,
       points: Number(item.points),
       wins,
       topSpeed: +(338 + (22 - position) * 0.75).toFixed(1),
@@ -193,8 +109,6 @@ function mapConstructorsFromApi(constructorStandings, drivers) {
     return {
       id: item.Constructor.constructorId,
       name,
-      wikiUrl: item.Constructor.url,
-      logo: null,
       drivers: teamDrivers,
       points: Number(item.points),
       wins: Number(item.wins),
@@ -225,24 +139,9 @@ async function fetchStandings() {
   const driversBase = mapDriversFromApi(driverList);
   const constructorsBase = mapConstructorsFromApi(constructorList, driversBase);
 
-  const [drivers, constructors] = await Promise.all([
-    Promise.all(
-      driversBase.map(async (driver, index) => ({
-        ...driver,
-        photo: await getWikiThumbnail(driverList[index]?.Driver?.url),
-      }))
-    ),
-    Promise.all(
-      constructorsBase.map(async (team, index) => ({
-        ...team,
-        logo: await getWikiThumbnail(constructorList[index]?.Constructor?.url),
-      }))
-    ),
-  ]);
-
   return {
-    drivers,
-    constructors,
+    drivers: driversBase,
+    constructors: constructorsBase,
     season: driverData.MRData.StandingsTable.season,
     round: driverData.MRData.StandingsTable.round,
   };
@@ -330,12 +229,16 @@ function App() {
   const [searchQuery, setSearchQuery] = useState('');
   const [selectedTeam, setSelectedTeam] = useState('All');
   const [selectedDriver, setSelectedDriver] = useState(null);
-  const [selectedConstructor, setSelectedConstructor] = useState(null);
   const [races, setRaces] = useState([]);
+  const [calendarError, setCalendarError] = useState(null);
   const [selectedCircuit, setSelectedCircuit] = useState(null);
   const [pulse, setPulse] = useState(false);
+  const refreshInFlight = useRef(false);
 
   const loadStandings = useCallback(async () => {
+    if (refreshInFlight.current) return;
+    refreshInFlight.current = true;
+
     try {
       const data = await fetchStandings();
       setDrivers(data.drivers);
@@ -347,11 +250,8 @@ function App() {
       setSelectedDriver((selected) =>
         selected ? data.drivers.find((d) => d.id === selected.id) ?? null : null
       );
-      setSelectedConstructor((selected) =>
-        selected ? data.constructors.find((c) => c.id === selected.id) ?? null : null
-      );
-
       try {
+        setCalendarError(null);
         const calendar = await fetchRaceCalendar(data.round);
         setRaces(calendar);
         setSelectedCircuit((prev) => {
@@ -363,12 +263,13 @@ function App() {
             null
           );
         });
-      } catch {
-        // Calendar fetch is non-fatal; standings still work
+      } catch (calendarFetchError) {
+        setCalendarError(calendarFetchError.message);
       }
     } catch (err) {
       setError(err.message);
     } finally {
+      refreshInFlight.current = false;
       setLoading(false);
     }
   }, []);
@@ -406,9 +307,12 @@ function App() {
   }, [drivers]);
 
   useEffect(() => {
-    loadStandings();
+    const initialLoad = setTimeout(loadStandings, 0);
     const interval = setInterval(loadStandings, REFRESH_INTERVAL_MS);
-    return () => clearInterval(interval);
+    return () => {
+      clearTimeout(initialLoad);
+      clearInterval(interval);
+    };
   }, [loadStandings]);
 
   useEffect(() => {
@@ -434,7 +338,6 @@ function App() {
     const handleKeyDown = (e) => {
       if (e.key === 'Escape') {
         setSelectedDriver(null);
-        setSelectedConstructor(null);
         setSelectedCircuit(null);
       }
     };
@@ -1250,20 +1153,26 @@ function App() {
         </div>
       </div>
 
-      <div className="tabs">
+      <div className="tabs" role="tablist" aria-label="Dashboard views">
         <button
+          role="tab"
+          aria-selected={activeTab === 'drivers'}
           className={`tab ${activeTab === 'drivers' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('drivers')}
         >
           Driver Standings
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'constructors'}
           className={`tab ${activeTab === 'constructors' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('constructors')}
         >
           Constructor Championship
         </button>
         <button
+          role="tab"
+          aria-selected={activeTab === 'maps'}
           className={`tab ${activeTab === 'maps' ? 'tab--active' : ''}`}
           onClick={() => setActiveTab('maps')}
         >
@@ -1276,6 +1185,7 @@ function App() {
           <div className="controls">
             <div className="search-wrapper">
               <input
+                aria-label="Search drivers or teams"
                 className="search-input"
                 type="text"
                 placeholder="Search drivers or teams..."
@@ -1319,6 +1229,13 @@ function App() {
                         <tr
                           key={driver.id}
                           className={selectedDriver?.id === driver.id ? 'row--selected' : ''}
+                          tabIndex={0}
+                          onKeyDown={(event) => {
+                            if (event.key === 'Enter' || event.key === ' ') {
+                              event.preventDefault();
+                              handleDriverClick(driver);
+                            }
+                          }}
                           onClick={() => handleDriverClick(driver)}
                         >
                           <td className={`pos pos--p${driver.position <= 3 ? driver.position : ''}`}>
@@ -1359,7 +1276,7 @@ function App() {
 
                   <div className="telemetry-grid">
                     <div className="telemetry-stat">
-                      <div className="telemetry-stat__label">Top Speed</div>
+                      <div className="telemetry-stat__label">Estimated Speed</div>
                       <div key={selectedDriver.topSpeed} className="telemetry-stat__value telemetry-stat__value--speed value--live">
                         {selectedDriver.topSpeed} km/h
                       </div>
@@ -1456,7 +1373,9 @@ function App() {
           <div className="panel">
             <div className="panel__header">{season} Calendar · Global Circuit Map</div>
             {races.length === 0 ? (
-              <div className="no-results">Race calendar unavailable.</div>
+              <div className="no-results">
+                {calendarError ? `Race calendar unavailable: ${calendarError}` : 'Race calendar unavailable.'}
+              </div>
             ) : (
               <>
                 <svg
@@ -1500,7 +1419,16 @@ function App() {
                       <g
                         key={race.id}
                         className={markerClass}
+                        role="button"
+                        tabIndex={0}
+                        aria-label={`Select ${race.raceName}`}
                         transform={`translate(${race.coords.x}, ${race.coords.y})`}
+                        onKeyDown={(event) => {
+                          if (event.key === 'Enter' || event.key === ' ') {
+                            event.preventDefault();
+                            handleCircuitClick(race);
+                          }
+                        }}
                         onClick={() => handleCircuitClick(race)}
                       >
                         <circle className="circuit-marker__dot" r={isSelected ? 7 : 5} />
@@ -1539,6 +1467,15 @@ function App() {
                     selectedCircuit?.id === race.id ? 'circuit-list__item--selected' : '',
                     race.status === 'current' ? 'circuit-list__item--current' : '',
                   ].join(' ')}
+                  role="button"
+                  tabIndex={0}
+                  aria-label={`Select ${race.raceName}`}
+                  onKeyDown={(event) => {
+                    if (event.key === 'Enter' || event.key === ' ') {
+                      event.preventDefault();
+                      handleCircuitClick(race);
+                    }
+                  }}
                   onClick={() => handleCircuitClick(race)}
                 >
                   <span className="circuit-list__round">R{race.round}</span>
