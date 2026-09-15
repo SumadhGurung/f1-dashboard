@@ -908,21 +908,47 @@ function App() {
           .maps-grid { grid-template-columns: 1fr 380px; }
         }
 
-        .world-map {
-          width: 100%;
-          height: auto;
-          display: block;
-          background: radial-gradient(ellipse at center, #0d1520 0%, #060608 70%);
-          border-radius: 6px;
+        .maps-grid .panel:first-child {
+          min-width: 0;
         }
 
-        .world-map__ocean { fill: #0a0e14; }
-        .world-map__grid { stroke: rgba(255, 255, 255, 0.04); stroke-width: 1; }
+        .world-map {
+          width: 100%;
+          min-height: 430px;
+          height: 100%;
+          display: block;
+          background:
+            radial-gradient(circle at 50% 50%, rgba(0, 255, 200, 0.08) 0, transparent 28%),
+            radial-gradient(ellipse at center, #101c29 0%, #07090d 72%);
+          border-radius: 0;
+          overflow: hidden;
+        }
+
+        .world-map__ocean { fill: #081019; }
+        .world-map__land {
+          fill: #142535;
+          stroke: rgba(148, 163, 184, 0.18);
+          stroke-width: 1.5;
+          opacity: 0.9;
+        }
+        .world-map__region {
+          fill: rgba(148, 163, 184, 0.42);
+          font-size: 12px;
+          font-family: 'Orbitron', sans-serif;
+          font-weight: 600;
+          letter-spacing: 1px;
+          text-anchor: middle;
+          opacity: 0.7;
+        }
+        .world-map__grid { stroke: rgba(148, 163, 184, 0.1); stroke-width: 1; }
         .world-map__route {
           fill: none;
-          stroke: rgba(225, 6, 0, 0.25);
-          stroke-width: 1.5;
-          stroke-dasharray: 6 4;
+          stroke: rgba(0, 255, 200, 0.5);
+          stroke-width: 2.5;
+          stroke-linecap: round;
+          stroke-linejoin: round;
+          stroke-dasharray: 2 8;
+          filter: drop-shadow(0 0 4px rgba(0, 255, 200, 0.35));
         }
 
         .circuit-marker {
@@ -930,21 +956,22 @@ function App() {
           transition: transform 0.15s;
         }
 
-        .circuit-marker:hover { transform: scale(1.3); }
+        .circuit-marker:hover,
+        .circuit-marker:focus { transform: scale(1.35); outline: none; }
 
         .circuit-marker__dot {
-          fill: #555;
-          stroke: rgba(255, 255, 255, 0.3);
-          stroke-width: 1.5;
+          fill: #64748b;
+          stroke: rgba(226, 232, 240, 0.8);
+          stroke-width: 2;
         }
 
-        .circuit-marker--completed .circuit-marker__dot { fill: #444; }
+        .circuit-marker--completed .circuit-marker__dot { fill: #64748b; }
         .circuit-marker--current .circuit-marker__dot {
           fill: #e10600;
           stroke: #ff6666;
-          filter: drop-shadow(0 0 6px rgba(225, 6, 0, 0.8));
+          filter: drop-shadow(0 0 9px rgba(225, 6, 0, 0.95));
         }
-        .circuit-marker--upcoming .circuit-marker__dot { fill: #00ffc8; stroke: rgba(0, 255, 200, 0.5); }
+        .circuit-marker--upcoming .circuit-marker__dot { fill: #00ffc8; stroke: #a7fff0; }
         .circuit-marker--selected .circuit-marker__dot {
           fill: #ffd700;
           stroke: #fff;
@@ -953,11 +980,14 @@ function App() {
 
         .circuit-marker__label {
           fill: #666;
-          font-size: 9px;
+          font-size: 11px;
           font-family: 'Rajdhani', sans-serif;
           font-weight: 600;
           text-anchor: middle;
           pointer-events: none;
+          paint-order: stroke;
+          stroke: #07090d;
+          stroke-width: 3px;
         }
 
         .circuit-marker--selected .circuit-marker__label,
@@ -967,11 +997,11 @@ function App() {
           display: flex;
           flex-wrap: wrap;
           gap: 1rem;
-          padding: 0.75rem 1rem;
-          background: rgba(0, 0, 0, 0.25);
+          padding: 0.9rem 1rem;
+          background: rgba(0, 0, 0, 0.42);
           border-top: 1px solid rgba(255, 255, 255, 0.06);
           font-size: 0.75rem;
-          color: #777;
+          color: #aab4c4;
         }
 
         .map-legend__item {
@@ -981,14 +1011,15 @@ function App() {
         }
 
         .map-legend__dot {
-          width: 10px;
-          height: 10px;
+          width: 11px;
+          height: 11px;
           border-radius: 50%;
+          border: 1px solid rgba(255,255,255,0.35);
         }
 
         .map-legend__dot--completed { background: #444; }
-        .map-legend__dot--current { background: #e10600; box-shadow: 0 0 6px #e10600; }
-        .map-legend__dot--upcoming { background: #00ffc8; }
+        .map-legend__dot--current { background: #e10600; box-shadow: 0 0 8px #e10600; }
+        .map-legend__dot--upcoming { background: #00ffc8; box-shadow: 0 0 8px rgba(0,255,200,0.65); }
 
         .circuit-list {
           max-height: 520px;
@@ -1381,10 +1412,21 @@ function App() {
                 <svg
                   className="world-map"
                   viewBox={`0 0 ${MAP_WIDTH} ${MAP_HEIGHT}`}
+                  preserveAspectRatio="none"
                   role="img"
                   aria-label="F1 world circuit map"
                 >
                   <rect className="world-map__ocean" width={MAP_WIDTH} height={MAP_HEIGHT} />
+                  <g aria-hidden="true">
+                    <path className="world-map__land" d="M92 92 132 70 176 78 201 105 190 135 204 161 181 181 173 218 144 246 125 229 114 196 91 172 76 137Z" />
+                    <path className="world-map__land" d="M218 266 248 278 264 315 257 351 237 384 224 420 202 402 208 365 194 332 201 298Z" />
+                    <path className="world-map__land" d="M392 96 426 77 472 84 503 103 552 91 605 99 647 87 696 96 733 116 773 113 812 133 845 157 832 178 782 170 748 187 704 173 662 181 615 165 579 176 535 158 501 170 464 150 427 153 402 130Z" />
+                    <path className="world-map__land" d="M484 190 518 177 553 192 568 226 550 258 534 294 507 319 480 299 466 264 475 230Z" />
+                    <path className="world-map__land" d="M760 318 796 307 837 318 861 337 850 355 815 360 782 349Z" />
+                    <text className="world-map__region" x="145" y="55">AMERICAS</text>
+                    <text className="world-map__region" x="650" y="70">EUROPE / ASIA</text>
+                    <text className="world-map__region" x="518" y="350">AFRICA</text>
+                  </g>
                   {[0, 1, 2, 3, 4].map((i) => (
                     <line
                       key={`lat-${i}`}
