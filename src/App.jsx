@@ -232,6 +232,7 @@ function App() {
   const [races, setRaces] = useState([]);
   const [calendarError, setCalendarError] = useState(null);
   const [selectedCircuit, setSelectedCircuit] = useState(null);
+  const [hoveredCircuit, setHoveredCircuit] = useState(null);
   const [pulse, setPulse] = useState(false);
   const refreshInFlight = useRef(false);
 
@@ -953,11 +954,26 @@ function App() {
 
         .circuit-marker {
           cursor: pointer;
-          transition: transform 0.15s;
+          outline: none;
         }
 
-        .circuit-marker:hover,
-        .circuit-marker:focus { transform: scale(1.35); outline: none; }
+        .circuit-marker__hit-area {
+          fill: transparent;
+          cursor: pointer;
+        }
+
+        .circuit-marker__dot {
+          transition: r 0.16s ease, fill 0.16s ease, stroke-width 0.16s ease;
+        }
+
+        .circuit-marker:hover .circuit-marker__dot,
+        .circuit-marker:focus .circuit-marker__dot,
+        .circuit-marker--hovered .circuit-marker__dot {
+          r: 8px;
+          fill: #ffe066;
+          stroke: #fff8d6;
+          stroke-width: 2.5;
+        }
 
         .circuit-marker__dot {
           fill: #64748b;
@@ -970,6 +986,17 @@ function App() {
           fill: #e10600;
           stroke: #ff6666;
           filter: drop-shadow(0 0 9px rgba(225, 6, 0, 0.95));
+        }
+        .circuit-marker__pulse {
+          fill: none;
+          stroke: rgba(225, 6, 0, 0.65);
+          stroke-width: 2;
+          animation: markerPulse 1.8s ease-out infinite;
+        }
+
+        @keyframes markerPulse {
+          0% { r: 7px; opacity: 0.85; }
+          100% { r: 18px; opacity: 0; }
         }
         .circuit-marker--upcoming .circuit-marker__dot { fill: #00ffc8; stroke: #a7fff0; }
         .circuit-marker--selected .circuit-marker__dot {
@@ -992,6 +1019,37 @@ function App() {
 
         .circuit-marker--selected .circuit-marker__label,
         .circuit-marker--current .circuit-marker__label { fill: #ccc; }
+
+        .map-hover-card {
+          pointer-events: none;
+          filter: drop-shadow(0 8px 14px rgba(0, 0, 0, 0.35));
+        }
+
+        .map-hover-card__surface {
+          fill: rgba(8, 12, 18, 0.96);
+          stroke: rgba(0, 255, 200, 0.7);
+          stroke-width: 1.5;
+        }
+
+        .map-hover-card__round {
+          fill: #00ffc8;
+          font-size: 10px;
+          font-family: 'Orbitron', sans-serif;
+          letter-spacing: 1px;
+        }
+
+        .map-hover-card__name {
+          fill: #fff;
+          font-size: 13px;
+          font-family: 'Rajdhani', sans-serif;
+          font-weight: 700;
+        }
+
+        .map-hover-card__meta {
+          fill: #9aa8bb;
+          font-size: 11px;
+          font-family: 'Rajdhani', sans-serif;
+        }
 
         .map-legend {
           display: flex;
@@ -1452,10 +1510,12 @@ function App() {
                   )}
                   {races.map((race) => {
                     const isSelected = selectedCircuit?.id === race.id;
+                    const isHovered = hoveredCircuit?.id === race.id;
                     const markerClass = [
                       'circuit-marker',
                       `circuit-marker--${race.status}`,
                       isSelected ? 'circuit-marker--selected' : '',
+                      isHovered ? 'circuit-marker--hovered' : '',
                     ].join(' ');
                     return (
                       <g
@@ -1465,6 +1525,10 @@ function App() {
                         tabIndex={0}
                         aria-label={`Select ${race.raceName}`}
                         transform={`translate(${race.coords.x}, ${race.coords.y})`}
+                        onMouseEnter={() => setHoveredCircuit(race)}
+                        onMouseLeave={() => setHoveredCircuit(null)}
+                        onFocus={() => setHoveredCircuit(race)}
+                        onBlur={() => setHoveredCircuit(null)}
                         onKeyDown={(event) => {
                           if (event.key === 'Enter' || event.key === ' ') {
                             event.preventDefault();
@@ -1473,6 +1537,8 @@ function App() {
                         }}
                         onClick={() => handleCircuitClick(race)}
                       >
+                        <circle className="circuit-marker__hit-area" r={15} />
+                        {race.status === 'current' && <circle className="circuit-marker__pulse" r={7} />}
                         <circle className="circuit-marker__dot" r={isSelected ? 7 : 5} />
                         {(isSelected || race.status === 'current') && (
                           <text className="circuit-marker__label" y={-10}>
@@ -1482,6 +1548,23 @@ function App() {
                       </g>
                     );
                   })}
+                  {hoveredCircuit && (() => {
+                    const tooltipX = Math.min(Math.max(hoveredCircuit.coords.x, 135), MAP_WIDTH - 135);
+                    const tooltipY = Math.max(hoveredCircuit.coords.y - 62, 34);
+                    return (
+                      <g
+                        className="map-hover-card"
+                        transform={`translate(${tooltipX - 125}, ${tooltipY - 34})`}
+                      >
+                        <rect className="map-hover-card__surface" width="250" height="68" rx="6" />
+                        <text className="map-hover-card__round" x="14" y="18">ROUND {hoveredCircuit.round}</text>
+                        <text className="map-hover-card__name" x="14" y="37">{hoveredCircuit.raceName}</text>
+                        <text className="map-hover-card__meta" x="14" y="55">
+                          {hoveredCircuit.locality}, {hoveredCircuit.country} · {hoveredCircuit.status}
+                        </text>
+                      </g>
+                    );
+                  })()}
                 </svg>
                 <div className="map-legend">
                   <span className="map-legend__item">
