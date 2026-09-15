@@ -1626,6 +1626,8 @@ function App() {
                         <Tooltip direction="top" offset={[0, -8]} opacity={1} sticky>
                           <strong>Round {race.round}: {race.raceName}</strong>
                           <br />
+                          {formatRaceDate(race.date, race.time)}
+                          <br />
                           {race.locality}, {race.country} · {race.status}
                         </Tooltip>
                       </CircleMarker>
